@@ -42,7 +42,6 @@ typedef avltree< MemoryMapping, compare<std::less<MemoryMapping> > >     AVLTree
 
 /******************************************************************************/
 
-#define NDEBUG
 #ifdef NDEBUG
 const std::size_t NumElem = 1000000;
 #else
