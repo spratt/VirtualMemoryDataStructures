@@ -11,6 +11,9 @@ To run: make run
 
 ## Results
 
+The following tests were performed on a 2.7 GHz Intel Core i7, 16 GB
+1600 MHz DDR3, running Mac OS X 10.9.5.
+
 With 10000 elements, 4 repetitions
 
     Container Red-Black Tree
