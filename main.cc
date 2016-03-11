@@ -7,6 +7,7 @@
 
 #include <boost/intrusive/rbtree.hpp>
 #include <boost/intrusive/avltree.hpp>
+#include <boost/intrusive/splaytree.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <vector>
 #include <functional>
@@ -18,7 +19,8 @@ using namespace boost::posix_time;
 /******************************************************************************/
 
 class MemoryMapping : public set_base_hook<optimize_size<true> >,
-                      public avl_set_base_hook<optimize_size<true> >
+                      public avl_set_base_hook<optimize_size<true> >,
+                      public bs_set_base_hook<optimize_size<true> >
 {
   std::uint64_t va_;
   std::uint64_t pa_;
@@ -37,8 +39,9 @@ public:
 };
 
 // Define trees using the base hook
-typedef rbtree<  MemoryMapping, compare<std::less<MemoryMapping> > >     RBTree;
-typedef avltree< MemoryMapping, compare<std::less<MemoryMapping> > >     AVLTree;
+typedef rbtree<    MemoryMapping, compare<std::less<MemoryMapping> > >     RBTree;
+typedef avltree<   MemoryMapping, compare<std::less<MemoryMapping> > >     AVLTree;
+typedef splaytree< MemoryMapping, compare<std::less<MemoryMapping> > >     SplayTree;
 
 /******************************************************************************/
 
@@ -77,66 +80,89 @@ public:
   std::size_t size() { return avlt_.size(); }
 };
 
+class SplayTreeContainer : public MemoryContainer<SplayTree::iterator> {
+  SplayTree splayt_;
+
+public:
+  SplayTreeContainer() : splayt_() {}
+  void insert(MemoryMapping& mm) {splayt_.insert_unique(mm); }
+  SplayTree::iterator end() { return splayt_.end(); }
+  SplayTree::iterator find(MemoryMapping& mm) { return splayt_.find(mm); }
+  void clear() { splayt_.clear(); }
+  std::size_t size() { return splayt_.size(); }
+};
+
 /******************************************************************************/
 
 #ifdef NDEBUG
-const std::size_t NumElem = 1000000;
-const std::size_t NumRepeat = 30;
+const std::size_t numElem = 1000000;
+const std::size_t numRepeat = 30;
 #else
-const std::size_t NumElem = 10000;
-const std::size_t NumRepeat = 4;
+const std::size_t numElem = 10000;
+const std::size_t numRepeat = 4;
 #endif
 
 template<class Iterator>
 void test_insertion(MemoryContainer<Iterator> &c,
                     const char *ContainerName,
                     std::vector<MemoryMapping> &values) {
-  std::cout << "Container " << ContainerName << std::endl;
-  //Prepare
   ptime tini, tend;
+  std::vector<double> times;
+  // Insert
+  std::cout << ContainerName << ",insert";
   {
-    // Insert
-    tini = microsec_clock::universal_time();
-    for( std::size_t repeat = 0, repeat_max = NumRepeat
+    for( std::size_t repeat = 0, repeat_max = numRepeat
            ; repeat != repeat_max
            ; ++repeat){
       c.clear();
+      tini = microsec_clock::universal_time();
       for( std::size_t i = 0, max = values.size()
              ; i != max
              ; ++i){
         c.insert(values[i]);
       }
+      tend = microsec_clock::universal_time();
+      times.push_back(double((tend-tini).total_nanoseconds())/double(numElem));
+      std::cout << "," << times.back();
       if(c.size() != values.size()){
-        std::cout << "    ERROR: size not consistent" << std::endl;
+        std::cerr << "    ERROR: size not consistent" << std::endl;
       }
     }
-    tend = microsec_clock::universal_time();
-    std::cout << "    Insert ns/iter: "
-              << double((tend-tini).total_nanoseconds())/double(NumElem*NumRepeat)
-              << std::endl;
+    double total = 0.0;
+    while(!times.empty()) {
+      total += times.back();
+      times.pop_back();
+    }
+    std::cout << "," << total/numRepeat << std::endl;
   }
   // Search
+  std::cout << ContainerName << ",search";
   {
-    tini = microsec_clock::universal_time();
-    for( std::size_t repeat = 0, repeat_max = NumRepeat
+    for( std::size_t repeat = 0, repeat_max = numRepeat
            ; repeat != repeat_max
            ; ++repeat){
       std::size_t found = 0;
+      tini = microsec_clock::universal_time();
       for( std::size_t i = 0, max = values.size()
              ; i != max
              ; ++i){
         found += static_cast<std::size_t>(c.end() != c.find(values[i]));
       }
-      if(found != NumElem){
-        std::cout << "    ERROR: not all found, "
-                  << found << " found out of " << NumElem
+      tend = microsec_clock::universal_time();
+      times.push_back(double((tend-tini).total_nanoseconds())/double(numElem));
+      std::cout << "," << times.back();
+      if(found != numElem){
+        std::cerr << "    ERROR: not all found, "
+                  << found << " found out of " << numElem
                   << std::endl;
       }
     }
-    tend = microsec_clock::universal_time();
-    std::cout << "    Search ns/iter: "
-              << double((tend-tini).total_nanoseconds())/double(NumElem*NumRepeat)
-              << std::endl;
+    double total = 0.0;
+    while(!times.empty()) {
+      total += times.back();
+      times.pop_back();
+    }
+    std::cout << "," << total/numRepeat << std::endl;
   }
 }
 
@@ -147,18 +173,29 @@ int main()
   std::vector<MemoryMapping> values;
   // Create several MemoryMapping objects, each one with a different value
   std::srand(0);
-  for(int i = 0; i < NumElem; ++i)  {
-    values.push_back(MemoryMapping(i, i + NumElem));
+  for(int i = 0; i < numElem; ++i)  {
+    values.push_back(MemoryMapping(i, i + numElem));
   }
   // Randomize the order
   std::random_shuffle(values.begin(), values.end());
 
+  std::cerr << "Number of elements:    " << numElem << std::endl
+            << "Number of repetitions: " << numRepeat << std::endl;
+  std::cout << "Data Structure,Operation";
+
+  for(int i = 0; i < numRepeat; ++i) {
+    std::cout << ",trial" << i;
+  }
+  std::cout << ",average" << std::endl;
   
   RBTreeContainer rbtc;
   test_insertion(rbtc, "Red-Black Tree", values);
 
   AVLTreeContainer avltc;
   test_insertion(avltc, "AVL Tree", values);
+
+  SplayTreeContainer splaytc;
+  test_insertion(splaytc, "Splay Tree", values);
   
   return 0;
 }

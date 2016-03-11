@@ -8,13 +8,10 @@
 SHELL := /bin/bash
 RM    := rm -rf
 
-.PHONY: all distclean run
+.PHONY: all distclean
 
 all: ./build/Makefile
 	@ $(MAKE) -C build
-
-run: all
-	@- (cd build >/dev/null 2>&1 && make run 2>/dev/null)
 
 ./build/Makefile:
 	@ (cd build >/dev/null 2>&1 && cmake ..)

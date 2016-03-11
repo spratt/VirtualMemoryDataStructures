@@ -10,5 +10,5 @@ endif()
 add_executable(VMds main.cc)
 target_link_libraries(VMds boost)
 add_custom_target(run
-  COMMAND VMds
+  COMMAND VMds > ../output.csv
 )
