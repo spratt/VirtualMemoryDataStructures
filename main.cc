@@ -44,10 +44,11 @@ typedef avltree< MemoryMapping, compare<std::less<MemoryMapping> > >     AVLTree
 
 #ifdef NDEBUG
 const std::size_t NumElem = 1000000;
+const std::size_t NumRepeat = 30;
 #else
 const std::size_t NumElem = 10000;
-#endif
 const std::size_t NumRepeat = 4;
+#endif
 
 template<class Container>
 void test_insertion(Container &c,

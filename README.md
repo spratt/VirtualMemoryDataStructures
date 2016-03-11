@@ -33,3 +33,13 @@ With 1000000 elements, 4 repetitions
     Container AVL Tree
     Insert ns/iter: 1879.46
     Search ns/iter: 1510.27
+
+With 1000000 elements, 30 repetitions
+
+    Container Red-Black Tree
+    Insert ns/iter: 1860.15
+    Search ns/iter: 1597.42
+    
+    Container AVL Tree
+    Insert ns/iter: 1931.18
+    Search ns/iter: 1515.38
