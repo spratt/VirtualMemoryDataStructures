@@ -42,6 +42,43 @@ typedef avltree< MemoryMapping, compare<std::less<MemoryMapping> > >     AVLTree
 
 /******************************************************************************/
 
+template<class Iterator>
+class MemoryContainer {
+public:
+  virtual void insert(MemoryMapping&) = 0;
+  virtual Iterator end() = 0;
+  virtual Iterator find(MemoryMapping&) = 0;
+  virtual void clear() = 0;
+  virtual std::size_t size() = 0;
+};
+
+class RBTreeContainer : public MemoryContainer<RBTree::iterator> {
+
+  RBTree rbt_;
+
+public:
+  RBTreeContainer() : rbt_() {}
+  void insert(MemoryMapping& mm) { rbt_.insert_unique(mm); }
+  RBTree::iterator end() { return rbt_.end(); }
+  RBTree::iterator find(MemoryMapping& mm) { return rbt_.find(mm); }
+  void clear() { rbt_.clear(); }
+  std::size_t size() { return rbt_.size(); }
+};
+
+class AVLTreeContainer : public MemoryContainer<AVLTree::iterator> {
+  AVLTree avlt_;
+
+public:
+  AVLTreeContainer() : avlt_() {}
+  void insert(MemoryMapping& mm) {avlt_.insert_unique(mm); }
+  AVLTree::iterator end() { return avlt_.end(); }
+  AVLTree::iterator find(MemoryMapping& mm) { return avlt_.find(mm); }
+  void clear() { avlt_.clear(); }
+  std::size_t size() { return avlt_.size(); }
+};
+
+/******************************************************************************/
+
 #ifdef NDEBUG
 const std::size_t NumElem = 1000000;
 const std::size_t NumRepeat = 30;
@@ -50,8 +87,8 @@ const std::size_t NumElem = 10000;
 const std::size_t NumRepeat = 4;
 #endif
 
-template<class Container>
-void test_insertion(Container &c,
+template<class Iterator>
+void test_insertion(MemoryContainer<Iterator> &c,
                     const char *ContainerName,
                     std::vector<MemoryMapping> &values) {
   std::cout << "Container " << ContainerName << std::endl;
@@ -67,7 +104,7 @@ void test_insertion(Container &c,
       for( std::size_t i = 0, max = values.size()
              ; i != max
              ; ++i){
-        c.insert_unique(values[i]);
+        c.insert(values[i]);
       }
       if(c.size() != values.size()){
         std::cout << "    ERROR: size not consistent" << std::endl;
@@ -117,11 +154,11 @@ int main()
   std::random_shuffle(values.begin(), values.end());
 
   
-  RBTree rbt;
-  test_insertion(rbt, "Red-Black Tree", values);
+  RBTreeContainer rbtc;
+  test_insertion(rbtc, "Red-Black Tree", values);
 
-  AVLTree avlt;
-  test_insertion(avlt, "AVL Tree", values);
+  AVLTreeContainer avltc;
+  test_insertion(avltc, "AVL Tree", values);
   
   return 0;
 }
