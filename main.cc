@@ -12,6 +12,8 @@
 #include <vector>
 #include <functional>
 #include <cassert>
+#include <random>
+#include <cstdint>
 #include "radixtree.hpp"
 
 using namespace boost::intrusive;
@@ -189,11 +191,17 @@ void test_insertion(MemoryContainer<Iterator> &c,
 
 int main()
 {
+  std::random_device device;
+  std::mt19937 generator(device());
+  std::uniform_int_distribution<uint64_t>
+    dist(0, std::numeric_limits<uint64_t>::max());
   std::vector<MemoryMapping> values;
   // Create several MemoryMapping objects, each one with a different value
   std::srand(0);
   for(uint64_t i = 0; i < numElem; ++i)  {
-    values.push_back(MemoryMapping(i, i + numElem));
+    uint64_t vadd = correctify_vadd(dist(generator));
+    uint64_t padd = correctify_padd(vadd, dist(generator));
+    values.push_back(MemoryMapping(vadd, padd));
   }
   // Randomize the order
   std::random_shuffle(values.begin(), values.end());
