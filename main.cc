@@ -12,6 +12,7 @@
 #include <vector>
 #include <functional>
 #include <cassert>
+#include "radixtree.hpp"
 
 using namespace boost::intrusive;
 using namespace boost::posix_time;
@@ -28,7 +29,10 @@ class MemoryMapping : public set_base_hook<optimize_size<true> >,
 public:
   set_member_hook<> member_hook_;
 
-  MemoryMapping(int va, int pa) : va_(va), pa_(pa) {}
+  MemoryMapping(uint64_t va, uint64_t pa) : va_(va), pa_(pa) {}
+
+  std::uint64_t getVA() { return va_; }
+  std::uint64_t getPA() { return pa_; }
 
   friend bool operator< (const MemoryMapping &a, const MemoryMapping &b)
   { return a.va_ < b.va_; }
@@ -90,6 +94,20 @@ public:
   SplayTree::iterator find(MemoryMapping& mm) { return splayt_.find(mm); }
   void clear() { splayt_.clear(); }
   std::size_t size() { return splayt_.size(); }
+};
+
+class RadixTreeContainer : public MemoryContainer<RadixTreeIterator> {
+  RadixTree radixt_;
+
+public:
+  RadixTreeContainer() : radixt_() {}
+  void insert(MemoryMapping& mm) {radixt_.insert(mm.getVA(), mm.getPA()); }
+  RadixTreeIterator end() { return radixt_.end(); }
+  RadixTreeIterator find(MemoryMapping& mm) {
+    return radixt_.find(mm.getVA());
+  }
+  void clear() { radixt_.clear(); }
+  std::size_t size() { return radixt_.size(); }
 };
 
 /******************************************************************************/
@@ -164,6 +182,7 @@ void test_insertion(MemoryContainer<Iterator> &c,
     }
     std::cout << "," << total/numRepeat << std::endl;
   }
+  c.clear();
 }
 
 /******************************************************************************/
@@ -173,7 +192,7 @@ int main()
   std::vector<MemoryMapping> values;
   // Create several MemoryMapping objects, each one with a different value
   std::srand(0);
-  for(int i = 0; i < numElem; ++i)  {
+  for(uint64_t i = 0; i < numElem; ++i)  {
     values.push_back(MemoryMapping(i, i + numElem));
   }
   // Randomize the order
@@ -187,15 +206,26 @@ int main()
     std::cout << ",trial" << i;
   }
   std::cout << ",average" << std::endl;
-  
-  RBTreeContainer rbtc;
-  test_insertion(rbtc, "Red-Black Tree", values);
 
-  AVLTreeContainer avltc;
-  test_insertion(avltc, "AVL Tree", values);
+  {
+    RBTreeContainer rbtc;
+    test_insertion(rbtc, "Red-Black Tree", values);
+  }
 
-  SplayTreeContainer splaytc;
-  test_insertion(splaytc, "Splay Tree", values);
+  {
+    AVLTreeContainer avltc;
+    test_insertion(avltc, "AVL Tree", values);
+  }
+
+  {
+    SplayTreeContainer splaytc;
+    test_insertion(splaytc, "Splay Tree", values);
+  }
+
+  {
+    RadixTreeContainer radixtc;
+    test_insertion(radixtc, "Radix Tree", values);
+  }
   
   return 0;
 }

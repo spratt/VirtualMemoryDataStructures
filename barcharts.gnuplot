@@ -4,4 +4,5 @@ set term aqua size 500,300
 set size 1,1
 set nokey
 set style fill solid
-plot "results.dat" using 1:3:xtic(2) with boxes
+set datafile separator ","
+plot "output.csv" every::1::7 with boxes

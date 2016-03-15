@@ -8,7 +8,7 @@
 SHELL := /bin/bash
 RM    := rm -rf
 
-.PHONY: all distclean
+.PHONY: all distclean plot
 
 all: ./build/Makefile
 	@ $(MAKE) -C build
