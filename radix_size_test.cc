@@ -116,13 +116,11 @@ public:
 
 template<class Iterator>
 void test_insertion(MemoryContainer<Iterator> &c,
-                    const char *ContainerName,
                     std::vector<MemoryMapping> &values,
                     std::size_t numRepeat) {
   ptime tini, tend;
   std::vector<double> times;
   // Insert
-  std::cout << ContainerName << ",insert";
   {
     for( std::size_t repeat = 0, repeat_max = numRepeat
            ; repeat != repeat_max
@@ -137,7 +135,7 @@ void test_insertion(MemoryContainer<Iterator> &c,
       tend = microsec_clock::universal_time();
       times.push_back(double((tend-tini).total_nanoseconds())
                       /double(values.size()));
-      std::cout << "," << times.back();
+      //std::cout << "," << times.back();
       if(c.size() != values.size()){
         std::cerr << "    ERROR: size not consistent" << std::endl;
       }
@@ -147,10 +145,9 @@ void test_insertion(MemoryContainer<Iterator> &c,
       total += times.back();
       times.pop_back();
     }
-    std::cout << "," << total/numRepeat << std::endl;
+    std::cout << "," << total/numRepeat;
   }
   // Search
-  std::cout << ContainerName << ",search";
   {
     for( std::size_t repeat = 0, repeat_max = numRepeat
            ; repeat != repeat_max
@@ -165,7 +162,7 @@ void test_insertion(MemoryContainer<Iterator> &c,
       tend = microsec_clock::universal_time();
       times.push_back(double((tend-tini).total_nanoseconds())/
                       double(values.size()));
-      std::cout << "," << times.back();
+      //std::cout << "," << times.back();
       if(found != values.size()){
         std::cerr << "    ERROR: not all found, "
                   << found << " found out of " << values.size()
@@ -188,11 +185,13 @@ void test_insertion(MemoryContainer<Iterator> &c,
 int main() {
 
 #ifdef NDEBUG
-  std::size_t numElem = 1000000;
-  std::size_t numRepeat = 30;
+  const std::size_t numElem = 1000000;
+  const std::size_t step = numElem / 20;
+  const std::size_t numRepeat = 30;
 #else
-  std::size_t numElem = 10000;
-  std::size_t numRepeat = 4;
+  const std::size_t numElem = 10000;
+  const std::size_t step = numElem / 5;
+  const std::size_t numRepeat = 4;
 #endif
   
   std::random_device device;
@@ -200,43 +199,24 @@ int main() {
   std::uniform_int_distribution<uint64_t>
     dist(0, std::numeric_limits<uint64_t>::max());
   std::vector<MemoryMapping> values;
-  // Create several MemoryMapping objects, each one with a different value
   std::srand(0);
-  for(uint64_t i = 0; i < numElem; ++i)  {
-    uint64_t vadd = correctify_vadd(dist(generator));
-    uint64_t padd = correctify_padd(vadd, dist(generator));
-    values.push_back(MemoryMapping(vadd, padd));
-  }
-  // Randomize the order
-  std::random_shuffle(values.begin(), values.end());
-
-  std::cerr << "Number of elements:    " << numElem << std::endl
-            << "Number of repetitions: " << numRepeat << std::endl;
-  std::cout << "Data Structure,Operation";
-
-  for(int i = 0; i < numRepeat; ++i) {
-    std::cout << ",trial" << i;
-  }
-  std::cout << ",average" << std::endl;
-
-  {
-    RBTreeContainer rbtc;
-    test_insertion(rbtc, "Red-Black Tree", values, numRepeat);
-  }
-
-  {
-    AVLTreeContainer avltc;
-    test_insertion(avltc, "AVL Tree", values, numRepeat);
-  }
-
-  {
-    SplayTreeContainer splaytc;
-    test_insertion(splaytc, "Splay Tree", values, numRepeat);
-  }
-
-  {
-    RadixTreeContainer radixtc;
-    test_insertion(radixtc, "Radix Tree", values, numRepeat);
+  
+  std::cout << "nElements,Radix-Insert,Radix-Search" << std::endl;
+  
+  while(values.size() <= numElem) {
+    for(uint64_t j = 0; j < step; ++j) {
+      // Create several MemoryMapping objects, each one with a different value
+      uint64_t vadd = correctify_vadd(dist(generator));
+      uint64_t padd = correctify_padd(vadd, dist(generator));
+      values.push_back(MemoryMapping(vadd, padd));
+    }
+    // Randomize the order
+    std::random_shuffle(values.begin(), values.end());
+    std::cout << values.size();
+    {
+      RadixTreeContainer radixtc;
+      test_insertion(radixtc, values, numRepeat);
+    }
   }
   
   return 0;
