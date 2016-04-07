@@ -1,5 +1,5 @@
-#ifndef RADIXTREE_H
-#define RADIXTREE_H
+#ifndef RADIXTREE_HPP
+#define RADIXTREE_HPP
 /******************************************************************************\
  * Radix Tree
  * MIT License
