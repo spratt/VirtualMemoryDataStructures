@@ -6,41 +6,89 @@
  * Copyright 2016, Simon Pratt
 \******************************************************************************/
 
+#include <iostream>
 #include <array>
 #include <cmath>
 #include <cassert>
 
 #define TABLE_BITS 12
 
+size_t key(uint64_t k, size_t level, size_t N) {
+  const uint64_t LEVEL_BITS = 36 / N;
+  const uint64_t LEVEL_MASK = pow(2, LEVEL_BITS) - 1;
+  const uint64_t shift = ((level-1)*LEVEL_BITS + TABLE_BITS);
+  return (k & (LEVEL_MASK << shift)) >> shift;
+}
+
 template <std::size_t N, std::size_t M>
 struct basic_marray {
-  typedef std::array<typename basic_marray<N-1, M>::t*, M> t;
+  typedef std::array<typename basic_marray<N-1, M>::T*, M> T;
+
+  static uint64_t get(T& m, uint64_t k, size_t topN) {
+    size_t level_key = key(k, N, topN);
+    // std::cout << std::dec;
+    // std::cout << "Getting <" << N << "," << M << ">[" << level_key << "]" << std::endl;
+    return basic_marray<N-1, M>::get(*(m[level_key]), k, topN);
+  }
+
+  static void set(T& m, uint64_t k, size_t topN, uint64_t v) {
+    size_t level_key = key(k, N, topN);
+    assert(level_key < M);
+    if(m[level_key] == NULL) {
+      m[level_key] = new typename basic_marray<N-1, M>::T();
+      basic_marray<N-1, M>::init(*(m[level_key]));
+      // std::cout << "Alloc: Marray<" << std::dec << N << "," << M << ">[" << level_key << "] = "
+      //           << std::hex << m[level_key] << std::endl;
+    }
+    basic_marray<N-1, M>::set(*(m[level_key]), k, topN, v);
+  }
+
+  static void clear(T& m) {
+    for(size_t i = 0; i < M; ++i) {
+      if(m[i] == NULL) continue;
+      basic_marray<N-1, M>::clear(*(m[i]));
+      // std::cout << "Free Marray<" << std::dec << N << "," << M << ">[" << i << "] = "
+      //           << std::hex << m[i] << std::endl;
+      delete m[i];
+      m[i] = NULL;
+    }
+  }
+
+  static void init(T& m) {
+    for(size_t i = 0; i < M; ++i) {
+      m[i] = (typename basic_marray<N-1, M>::T*)NULL;
+    }
+  }
 };
 
 template <std::size_t M>
 struct basic_marray<1, M> {
-  typedef std::array<uint64_t, M> t;
+  typedef std::array<uint64_t, M> T;
+
+  static uint64_t get(T m, uint64_t k, size_t topN) {
+    size_t level_key = key(k, 1, topN);
+    // std::cout << std::dec;
+    // std::cout << "Getting Marray<1," << M << ">[" << level_key << "] = 0x" << std::hex << m[level_key] << std::endl;
+    return m[level_key];
+  }
+
+  static void set(T& m, uint64_t k, size_t topN, uint64_t v) {
+    size_t level_key = key(k, 1, topN);
+    // std::cout << std::dec;
+    // std::cout << "Setting Marray<1," << M << ">[" << level_key << "] = 0x" << std::hex << v << std::endl;
+    m[level_key] = v;
+  }
+
+  static void clear(T& m) {
+    // Do nothing at this level
+  }
+
+  static void init(T& m) {
+    for(size_t i = 0; i < M; ++i) {
+      m[i] = (uint64_t)NULL;
+    }
+  }
 };
-
-template <std::size_t N, std::size_t M>
-using marray = typename basic_marray<N,M>::t;
-
-uint16_t key(uint64_t k, size_t level, size_t N) {
-  const uint8_t LEVEL_BITS = 36 / N;
-  const uint64_t LEVEL_MASK = pow(2, LEVEL_BITS) - 1;
-  const uint8_t shift = ((level-1)*LEVEL_BITS + TABLE_BITS);
-  return (k & (LEVEL_MASK << shift) >> shift);
-}
-
-template <std::size_t L, std::size_t M>
-marray<1,M>& get_array(marray<L,M>& m, uint64_t k, size_t N) {
-  return get_array<L-1, M>(*(m[key(k, L, N)]), k, N);
-}
-  
-template <std::size_t M>
-marray<1,M>& get_array<1,M>(marray<1,M>& m, uint64_t k, size_t N) {
-  return m[key(k, 1, N)];
-}
 
 /******************************************************************************/
 // x^n
@@ -58,8 +106,11 @@ struct pow_t<X, 0> {
 
 template <std::size_t N, std::size_t M>
 class Marray {
+private:
+  using marray = typename basic_marray<N,M>::T;
+  using barray = typename basic_marray<1,M>::T;
+  
 public:
-  using barray = marray<1,M>;
 
   static const uint8_t KEY_BITS = 36;
   static const uint8_t MIN_LEVELS = 2;
@@ -72,35 +123,21 @@ public:
                  "Marray: Table size (M) should be 2**(36/N)");
   
 private:
-  marray<N, M> m;
-
-  barray& get_table(uint64_t k) {
-    return get_array<N, M>(m, k, N);
-  }
-  
-  // barray& get_table(uint64_t k) {
-  //   void* next = &m;
-  //   for(size_t level = N; level > 1; --level) {
-  //     next = ((typename basic_marray<level, M>)*next)[key(k, level)];
-  //     assert(next != NULL);
-  //   }
-  //   return *next;
-  // }
+  marray m;
 
 public:
-  Marray() {}
+  Marray() { basic_marray<N,M>::init(m); }
+  ~Marray() { clear(); }
   
-  // uint64_t get(uint64_t k) {
-  //   void* p = &m;
-  //   for(std:size_t level = 0; level < N; ++level) {
-  //     p = (*p)[
-  //   }
-  // }
+  uint64_t get(uint64_t k) {
+	return basic_marray<N,M>::get(m, k, N);
+  }
 
   void set(uint64_t k, uint64_t v) {
-    get_table(k)[key(k, 1, N)] = v;
-    return;
+    basic_marray<N,M>::set(m, k, N, v);
   }
+
+  void clear() { basic_marray<N,M>::clear(m); }
 };
 
 /******************************************************************************/

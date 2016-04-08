@@ -13,6 +13,7 @@ add_executable(radix_size_test radix_size_test.cc)
 add_executable(marray_test marray_test.cc)
 target_link_libraries(VMds boost)
 target_link_libraries(radix_size_test boost)
+target_link_libraries(marray_test boost)
 set_target_properties(VMds PROPERTIES CXX_STANDARD 14)
 set_target_properties(radixtree_test PROPERTIES CXX_STANDARD 14)
 set_target_properties(marray_test PROPERTIES CXX_STANDARD 14)
@@ -30,4 +31,8 @@ add_custom_target(valgrindradix
 )
 add_custom_target(runmarray
   COMMAND marray_test
+)
+
+add_custom_target(valgrindmarray
+  COMMAND valgrind --leak-check=full ./marray_test
 )
