@@ -91,6 +91,7 @@ struct basic_marray<1, M> {
 };
 
 /******************************************************************************/
+#ifndef NDEBUG
 // x^n
 // By Alexandre Daigle
 template <std::size_t X, std::size_t N>
@@ -102,6 +103,7 @@ template<std::size_t X>
 struct pow_t<X, 0> {
     static constexpr std::size_t value = 1;
 };
+#endif
 /******************************************************************************/
 
 template <std::size_t N, std::size_t M>
@@ -114,14 +116,14 @@ public:
 
   static const uint8_t KEY_BITS = 36;
   static const uint8_t MIN_LEVELS = 2;
-  
+#ifndef NDEBUG
   static_assert( N >= MIN_LEVELS,
                  "Marray: too few levels means stupid big tables" );
   static_assert( KEY_BITS % N == 0,
                  "Marray: #bits should be divisible by #levels (N)");
   static_assert( M == pow_t<2, 36 / N>::value,
                  "Marray: Table size (M) should be 2**(36/N)");
-  
+#endif
 private:
   marray m;
 

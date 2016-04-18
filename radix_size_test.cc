@@ -174,7 +174,7 @@ void test_insertion(MemoryContainer<Iterator> &c,
       total += times.back();
       times.pop_back();
     }
-    std::cout << "," << total/numRepeat << std::endl;
+    std::cout << "," << total/numRepeat;
   }
   c.clear();
 }
@@ -201,7 +201,7 @@ int main() {
   std::vector<MemoryMapping> values;
   std::srand(0);
   
-  std::cout << "nElements,Radix-Insert,Radix-Search" << std::endl;
+  std::cout << "nElements,Radix-Insert,Radix-Search,Red-Black-Insert,Red-Black-Search,AVL-Insert,AVL-Search,Splay-Insert,Splay-Search" << std::endl;
   
   while(values.size() <= numElem) {
     for(uint64_t j = 0; j < step; ++j) {
@@ -217,6 +217,23 @@ int main() {
       RadixTreeContainer radixtc;
       test_insertion(radixtc, values, numRepeat);
     }
+
+    {
+      RBTreeContainer rbtc;
+      test_insertion(rbtc, values, numRepeat);
+    }
+
+    {
+      AVLTreeContainer avltc;
+      test_insertion(avltc, values, numRepeat);
+    }
+
+    {
+      SplayTreeContainer splaytc;
+      test_insertion(splaytc, values, numRepeat);
+    }
+
+    std::cout << std::endl;
   }
   
   return 0;
